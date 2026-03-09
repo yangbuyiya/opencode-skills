@@ -46,9 +46,9 @@ CARD_HEIGHT = 1440
 # 内容区域安全高度（考虑 padding 和 margin）
 # card-inner padding: 60px * 2 = 120px
 # card-container padding: 50px * 2 = 100px  
-# 页码区域: ~80px
-# 安全边距: ~40px
-SAFE_HEIGHT = CARD_HEIGHT - 120 - 100 - 80 - 40  # ~1100px
+# 底部安全边距: 20px
+# 实际可用高度: CARD_HEIGHT - 100 (验证时的阈值)
+SAFE_HEIGHT = CARD_HEIGHT - 100  # 1340px - 与验证阈值保持一致
 
 # 样式配置
 STYLES = {
@@ -130,35 +130,43 @@ def split_content_by_separator(body: str) -> list:
 
 
 def estimate_content_height(content: str) -> int:
-    """预估内容高度（基于字数和元素类型）"""
+    """预估内容高度（基于字数和元素类型），优化为更接近实际渲染值"""
     lines = content.split('\n')
     total_height = 0
     
     for line in lines:
         line = line.strip()
         if not line:
-            total_height += 20  # 空行
+            total_height += 10  # 空行（减少预估）
             continue
             
-        # 标题
+        # 标题 - 根据 CSS 实际值调整
         if line.startswith('# '):
-            total_height += 130  # h1: font-size 72 + margin
+            total_height += 135  # h1: font-size 72*1.3 + margin-bottom 40 + margin-top ~50
         elif line.startswith('## '):
-            total_height += 110  # h2
+            total_height += 125  # h2: font-size 56*1.4 + margin-top 50 + margin-bottom 25
         elif line.startswith('### '):
-            total_height += 90   # h3
-        # 代码块
+            total_height += 105  # h3: font-size 48*1.4 + margin-top 40 + margin-bottom 20
+        # 代码块起始/结束标记
         elif line.startswith('```'):
-            total_height += 80   # 代码块起始/结束
-        # 列表
+            total_height += 50   # 代码块起始/结束（减少预估）
+        # 列表项
         elif line.startswith(('- ', '* ', '+ ')):
-            total_height += 85   # li: line-height ~1.6, font-size 42
-        # 引用
+            # 估算列表内容高度
+            content_text = line[2:].strip()
+            char_count = len(content_text)
+            lines_needed = max(1, char_count / 28)
+            total_height += int(lines_needed * 42 * 1.6) + 20  # + margin-bottom
+        # 引用块
         elif line.startswith('>'):
-            total_height += 100  # blockquote padding
+            content_text = line[1:].strip()
+            char_count = len(content_text)
+            lines_needed = max(1, char_count / 28)
+            # blockquote: padding + margin + 内容高度
+            total_height += 90 + int(lines_needed * 42 * 1.7)  # 减少padding预估
         # 图片
         elif line.startswith('!['):
-            total_height += 300  # 图片高度估计
+            total_height += 280  # 图片高度估计（略微减少）
         # 普通段落
         else:
             # 估算字数
@@ -174,7 +182,12 @@ def smart_split_content(content: str, max_height: int = SAFE_HEIGHT) -> List[str
     """
     智能拆分内容到多张卡片
     基于预估高度进行拆分，尽量保持段落完整
+    优化：添加缓冲区，避免过早拆分
     """
+    # 添加缓冲区，允许略微超过限制（10%缓冲）
+    buffer_zone = max_height * 0.1
+    effective_max = max_height + buffer_zone
+    
     # 首先尝试识别内容块（以标题或空行分隔）
     blocks = []
     current_block = []
@@ -213,8 +226,8 @@ def smart_split_content(content: str, max_height: int = SAFE_HEIGHT) -> List[str
     for block in blocks:
         block_height = estimate_content_height(block)
         
-        # 如果单个块就超过限制，需要进一步拆分
-        if block_height > max_height:
+        # 如果单个块就超过限制（使用有效最大值），需要进一步拆分
+        if block_height > effective_max:
             # 如果当前卡片有内容，先保存
             if current_card:
                 cards.append('\n\n'.join(current_card))
@@ -229,6 +242,7 @@ def smart_split_content(content: str, max_height: int = SAFE_HEIGHT) -> List[str
             for line in lines:
                 line_height = estimate_content_height(line)
                 
+                # 使用有效最大值进行判断，但超过真实限制时必须拆分
                 if sub_height + line_height > max_height and sub_block:
                     cards.append('\n'.join(sub_block))
                     sub_block = [line]
@@ -240,8 +254,8 @@ def smart_split_content(content: str, max_height: int = SAFE_HEIGHT) -> List[str
             if sub_block:
                 cards.append('\n'.join(sub_block))
         
-        # 如果当前卡片加上这个块会超，先保存当前卡片
-        elif current_height + block_height > max_height and current_card:
+        # 如果当前卡片加上这个块会超（使用有效最大值判断），先保存当前卡片
+        elif current_height + block_height > effective_max and current_card:
             cards.append('\n\n'.join(current_card))
             current_card = [block]
             current_height = block_height
@@ -561,6 +575,7 @@ async def process_and_render_cards(card_contents: List[str], output_dir: str,
     """
     处理卡片内容，检测高度并自动分页，然后渲染
     返回最终生成的所有卡片文件路径
+    优化：增加预估验证缓冲区，避免过早拆分
     """
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -573,10 +588,14 @@ async def process_and_render_cards(card_contents: List[str], output_dir: str,
                 # 预估内容高度
                 estimated_height = estimate_content_height(content)
                 
-                # 如果预估高度超过安全高度，尝试拆分
-                if estimated_height > SAFE_HEIGHT:
+                # 设置缓冲区：如果预估高度在安全高度的 1.15 倍以内，先验证实际高度
+                verification_threshold = SAFE_HEIGHT * 1.15
+                
+                # 如果预估高度超过阈值，尝试拆分
+                if estimated_height > verification_threshold:
                     split_contents = smart_split_content(content, SAFE_HEIGHT)
                 else:
+                    # 预估在缓冲区内，先验证实际高度再决定
                     split_contents = [content]
                 
                 # 验证每个拆分后的内容
@@ -585,19 +604,18 @@ async def process_and_render_cards(card_contents: List[str], output_dir: str,
                     temp_html = generate_card_html(split_content, 1, 1, style_key)
                     actual_height = await measure_content_height(page, temp_html)
                     
-                    # 如果仍然超出，进一步按行拆分
-                    if actual_height > CARD_HEIGHT - 100:
+                    # 如果仍然超出安全高度，进一步按行拆分
+                    if actual_height > SAFE_HEIGHT:
                         lines = split_content.split('\n')
                         sub_contents = []
                         sub_lines = []
-                        sub_height = 0
                         
                         for line in lines:
                             test_lines = sub_lines + [line]
                             test_html = generate_card_html('\n'.join(test_lines), 1, 1, style_key)
                             test_height = await measure_content_height(page, test_html)
                             
-                            if test_height > CARD_HEIGHT - 100 and sub_lines:
+                            if test_height > SAFE_HEIGHT and sub_lines:
                                 sub_contents.append('\n'.join(sub_lines))
                                 sub_lines = [line]
                             else:
