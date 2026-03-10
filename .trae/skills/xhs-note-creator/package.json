@@ -13,8 +13,7 @@
     "image-generation",
     "social-media"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "杨不易呀(yangbuyiya)",
   "dependencies": {
     "js-yaml": "^4.1.1",
     "marked": "^11.0.0",
