@@ -2,8 +2,8 @@
 # Ralph Loop 启动脚本 - 仅初始化，不循环
 
 DATE=${1:-$(date +%Y-%m-%d)}
-PRD_FILE=".opencode/skills/searchnews/scripts/ralph/prd.json"
-PRD_TEMPLATE=".opencode/skills/searchnews/scripts/ralph/prd.template.json"
+PRD_FILE=".trae/skills/searchnews/scripts/ralph/prd.json"
+PRD_TEMPLATE=".trae/skills/searchnews/scripts/ralph/prd.template.json"
 
 # 从模板创建/重置 prd.json
 if [ -f "$PRD_TEMPLATE" ]; then

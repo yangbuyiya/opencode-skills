@@ -44,13 +44,13 @@ metadata:
 
 ```bash
 # 第零步：启动 Ralph Loop（必须执行！）
-bash .opencode/skills/searchnews/scripts/ralph/ralph.sh 2026-01-19
+bash .trae/skills/searchnews/scripts/ralph/ralph.sh 2026-01-19
 ```
 
 脚本会自动初始化 `prd.json`，然后 Agent 按任务清单逐个处理。
 
 ### 第一步：初始化任务清单（由脚本完成）
-脚本会在 `.opencode/skills/searchnews/scripts/ralph/prd.json` 中生成源网站列表，初始状态均为 `pending`。**AIBase日报必须放在第一位，优先抓取。**
+脚本会在 `.trae/skills/searchnews/scripts/ralph/prd.json` 中生成源网站列表，初始状态均为 `pending`。**AIBase日报必须放在第一位，优先抓取。**
 
 ### 第二步：地毯式循环搜索
 1. 读取 `prd.json` 中处于 `pending` 状态的源。
@@ -265,7 +265,7 @@ tags: [AI新闻, 日报]
 #### 步骤4：生成总览图
 用替换后的提示词调用 image-service：
 ```bash
-python .opencode/skills/image-service/scripts/text_to_image.py \
+python .trae/skills/image-service/scripts/text_to_image.py \
   "{替换变量后的完整提示词}" -r 16:9 -o "assets/video/{日期}/00_overview.png"
 ```
 
@@ -314,17 +314,17 @@ assets/video/{YYYY-MM-DD}/
 mkdir -p "assets/video/{日期}/audio"
 
 # 2. 并发生成配图（使用 text_to_image）
-python .opencode/skills/image-service/scripts/text_to_image.py \
+python .trae/skills/image-service/scripts/text_to_image.py \
   "{风格提示词}" -r 16:9 -o "assets/video/{日期}/00_overview.png"
 
 # 3. 并发生成配音
-python .opencode/skills/video-creator/scripts/tts_generator.py \
+python .trae/skills/video-creator/scripts/tts_generator.py \
   --text "{配音文本}" \
   --voice zh-CN-YunyangNeural \
   --output "assets/video/{日期}/audio/XX.mp3"
 
 # 4. 合成视频
-python .opencode/skills/video-creator/scripts/video_maker.py \
+python .trae/skills/video-creator/scripts/video_maker.py \
   assets/video/{日期}/video.yaml
 ```
 

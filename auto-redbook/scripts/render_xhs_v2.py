@@ -28,7 +28,8 @@ from typing import List, Dict, Tuple
 try:
     import markdown
     import yaml
-    from playwright.async_api import async_playwright, Page
+    from playwright.async_api import Page
+    from render_utils import RenderSession, measure_content_height
 except ImportError as e:
     print(f"缺少依赖: {e}")
     print("请运行: pip install markdown pyyaml playwright && playwright install chromium")
@@ -48,7 +49,7 @@ CARD_HEIGHT = 1440
 # card-container padding: 50px * 2 = 100px  
 # 页码区域: ~80px
 # 安全边距: ~40px
-SAFE_HEIGHT = CARD_HEIGHT - 120 - 100 - 80 - 40  # ~1100px
+SAFE_HEIGHT = CARD_HEIGHT - 120 - 100 - 80 - 20  # ~1100px
 
 # 样式配置
 STYLES = {
@@ -515,109 +516,84 @@ def generate_card_html(content: str, page_number: int = 1, total_pages: int = 1,
 </html>'''
 
 
-async def measure_content_height(page: Page, html_content: str) -> int:
-    """使用 Playwright 测量实际内容高度"""
+async def render_html_to_image(
+    html_content: str, 
+    output_path: str, 
+    page: Page,
+    width: int = CARD_WIDTH, 
+    height: int = CARD_HEIGHT
+):
+    """使用 Playwright 将 HTML 渲染为图片（复用传入的 page）"""
+    await page.set_viewport_size({'width': width, 'height': height})
     await page.set_content(html_content, wait_until='networkidle')
-    await page.wait_for_timeout(300)  # 等待字体渲染
+    await page.wait_for_timeout(300)
     
-    height = await page.evaluate('''() => {
-        const inner = document.querySelector('.card-inner');
-        if (inner) {
-            return inner.scrollHeight;
-        }
-        const container = document.querySelector('.card-container');
-        return container ? container.scrollHeight : document.body.scrollHeight;
-    }''')
+    await page.screenshot(
+        path=output_path,
+        clip={'x': 0, 'y': 0, 'width': width, 'height': height},
+        type='png'
+    )
     
-    return height
+    print(f"  ✅ 已生成: {output_path}")
 
 
-async def render_html_to_image(html_content: str, output_path: str, 
-                                width: int = CARD_WIDTH, height: int = CARD_HEIGHT):
-    """使用 Playwright 将 HTML 渲染为图片"""
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={'width': width, 'height': height})
-        
-        try:
-            await page.set_content(html_content, wait_until='networkidle')
-            await page.wait_for_timeout(300)
-            
-            # 截图固定尺寸
-            await page.screenshot(
-                path=output_path,
-                clip={'x': 0, 'y': 0, 'width': width, 'height': height},
-                type='png'
-            )
-            
-            print(f"  ✅ 已生成: {output_path}")
-            
-        finally:
-            await browser.close()
-
-
-async def process_and_render_cards(card_contents: List[str], output_dir: str, 
-                                   style_key: str) -> List[str]:
+async def process_and_render_cards(
+    card_contents: List[str], 
+    page: Page,
+    style_key: str
+) -> List[str]:
     """
     处理卡片内容，检测高度并自动分页，然后渲染
-    返回最终生成的所有卡片文件路径
+    返回最终生成的所有卡片内容
     """
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={'width': CARD_WIDTH, 'height': CARD_HEIGHT})
+    all_cards = []
+    
+    for content in card_contents:
+        # 预估内容高度
+        estimated_height = estimate_content_height(content)
         
-        all_cards = []
+        # 如果预估高度超过安全高度，尝试拆分
+        if estimated_height > SAFE_HEIGHT:
+            split_contents = smart_split_content(content, SAFE_HEIGHT)
+        else:
+            split_contents = [content]
         
-        try:
-            for content in card_contents:
-                # 预估内容高度
-                estimated_height = estimate_content_height(content)
+        # 验证每个拆分后的内容
+        for split_content in split_contents:
+            # 生成临时 HTML 测量
+            temp_html = generate_card_html(split_content, 1, 1, style_key)
+            actual_height = await measure_content_height(page, temp_html)
+            
+            # 如果仍然超出，进一步按行拆分
+            if actual_height > CARD_HEIGHT - 100:
+                lines = split_content.split('\n')
+                sub_contents = []
+                sub_lines = []
+                sub_height = 0
                 
-                # 如果预估高度超过安全高度，尝试拆分
-                if estimated_height > SAFE_HEIGHT:
-                    split_contents = smart_split_content(content, SAFE_HEIGHT)
-                else:
-                    split_contents = [content]
-                
-                # 验证每个拆分后的内容
-                for split_content in split_contents:
-                    # 生成临时 HTML 测量
-                    temp_html = generate_card_html(split_content, 1, 1, style_key)
-                    actual_height = await measure_content_height(page, temp_html)
+                for line in lines:
+                    test_lines = sub_lines + [line]
+                    test_html = generate_card_html('\n'.join(test_lines), 1, 1, style_key)
+                    test_height = await measure_content_height(page, test_html)
                     
-                    # 如果仍然超出，进一步按行拆分
-                    if actual_height > CARD_HEIGHT - 100:
-                        lines = split_content.split('\n')
-                        sub_contents = []
-                        sub_lines = []
-                        sub_height = 0
-                        
-                        for line in lines:
-                            test_lines = sub_lines + [line]
-                            test_html = generate_card_html('\n'.join(test_lines), 1, 1, style_key)
-                            test_height = await measure_content_height(page, test_html)
-                            
-                            if test_height > CARD_HEIGHT - 100 and sub_lines:
-                                sub_contents.append('\n'.join(sub_lines))
-                                sub_lines = [line]
-                            else:
-                                sub_lines = test_lines
-                        
-                        if sub_lines:
-                            sub_contents.append('\n'.join(sub_lines))
-                        
-                        all_cards.extend(sub_contents)
+                    if test_height > CARD_HEIGHT - 100 and sub_lines:
+                        sub_contents.append('\n'.join(sub_lines))
+                        sub_lines = [line]
                     else:
-                        all_cards.append(split_content)
-        
-        finally:
-            await browser.close()
+                        sub_lines = test_lines
+                
+                if sub_lines:
+                    sub_contents.append('\n'.join(sub_lines))
+                
+                all_cards.extend(sub_contents)
+            else:
+                all_cards.append(split_content)
     
     return all_cards
 
 
 async def render_markdown_to_cards(md_file: str, output_dir: str, style_key: str = "purple"):
-    """主渲染函数：将 Markdown 文件渲染为多张卡片图片"""
+    """主渲染函数：将 Markdown 文件渲染为多张卡片图片（统一管理 Playwright 生命周期）"""
     print(f"\n🎨 开始渲染: {md_file}")
     print(f"🎨 使用样式: {STYLES[style_key]['name']}")
     
@@ -633,42 +609,38 @@ async def render_markdown_to_cards(md_file: str, output_dir: str, style_key: str
     card_contents = split_content_by_separator(body)
     print(f"  📄 检测到 {len(card_contents)} 个内容块")
     
-    # 处理内容，智能分页
-    print("  🔍 分析内容高度并智能分页...")
-    processed_cards = await process_and_render_cards(card_contents, output_dir, style_key)
-    total_cards = len(processed_cards)
-    print(f"  📄 将生成 {total_cards} 张卡片")
-    
-    # 生成封面
-    if metadata.get('emoji') or metadata.get('title'):
-        print("  📷 生成封面...")
-        cover_html = generate_cover_html(metadata, style_key)
-        cover_path = os.path.join(output_dir, 'cover.png')
-        await render_html_to_image(cover_html, cover_path)
-    
-    # 生成正文卡片
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={'width': CARD_WIDTH, 'height': CARD_HEIGHT})
+    # 使用统一的 RenderSession 管理整个渲染流程
+    async with RenderSession(width=CARD_WIDTH, height=CARD_HEIGHT, headless=True) as session:
+        page = session.page
         
-        try:
-            for i, content in enumerate(processed_cards, 1):
-                print(f"  📷 生成卡片 {i}/{total_cards}...")
-                card_html = generate_card_html(content, i, total_cards, style_key)
-                card_path = os.path.join(output_dir, f'card_{i}.png')
-                
-                await page.set_content(card_html, wait_until='networkidle')
-                await page.wait_for_timeout(300)
-                
-                await page.screenshot(
-                    path=card_path,
-                    clip={'x': 0, 'y': 0, 'width': CARD_WIDTH, 'height': CARD_HEIGHT},
-                    type='png'
-                )
-                print(f"  ✅ 已生成: {card_path}")
+        # 处理内容，智能分页
+        print("  🔍 分析内容高度并智能分页...")
+        processed_cards = await process_and_render_cards(card_contents, page, style_key)
+        total_cards = len(processed_cards)
+        print(f"  📄 将生成 {total_cards} 张卡片")
         
-        finally:
-            await browser.close()
+        # 生成封面
+        if metadata.get('emoji') or metadata.get('title'):
+            print("  📷 生成封面...")
+            cover_html = generate_cover_html(metadata, style_key)
+            cover_path = os.path.join(output_dir, 'cover.png')
+            await render_html_to_image(cover_html, cover_path, page)
+        
+        # 生成正文卡片
+        for i, content in enumerate(processed_cards, 1):
+            print(f"  📷 生成卡片 {i}/{total_cards}...")
+            card_html = generate_card_html(content, i, total_cards, style_key)
+            card_path = os.path.join(output_dir, f'card_{i}.png')
+            
+            await page.set_content(card_html, wait_until='networkidle')
+            await page.wait_for_timeout(300)
+            
+            await page.screenshot(
+                path=card_path,
+                clip={'x': 0, 'y': 0, 'width': CARD_WIDTH, 'height': CARD_HEIGHT},
+                type='png'
+            )
+            print(f"  ✅ 已生成: {card_path}")
     
     print(f"\n✨ 渲染完成！共生成 {total_cards} 张卡片，保存到: {output_dir}")
     return total_cards
