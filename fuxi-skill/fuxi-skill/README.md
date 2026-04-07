@@ -103,7 +103,7 @@ Naval     ❯ 你列了三个欲望。每个欲望都是你跟不快乐签的一
 npx skills add yangbuyiya/fuxi-skill
 ```
 
-然后在 Claude Code 里：
+然后在 任意IDE 里使用, 如: Claude Code ：
 
 ```
 > 蒸馏一个保罗·格雷厄姆
@@ -123,7 +123,7 @@ npx skills add yangbuyiya/fuxi-skill
 
 ## 伏羲蒸馏了什么
 
-蒸馏各领域最强的人，需要提取比日常工作习惯更深的东西。伏羲提取六层：
+蒸馏各领域最强的人，需要提取比日常工作习惯更深的东西。伏羲提取七层：
 
 | 层次 | 说明 |
 |---|---|
@@ -131,6 +131,8 @@ npx skills add yangbuyiya/fuxi-skill
 | **怎么想** | 心智模型、认知框架 |
 | **怎么判断** | 决策启发式 |
 | **什么不做** | 反模式、价值观底线 |
+| **从哪里来** | 输入源分析——此人读什么书、受谁影响、思想启蒙者 |
+| **在哪里** | 智识谱系——思想流派归属、跨领域影响、反对谁 |
 | **知道局限** | 诚实边界 |
 
 工作习惯可以靠流程文档传递，但让芒格和马斯克面对同一个问题做出不同判断的，是认知框架。伏羲提取的是认知操作系统。
@@ -177,10 +179,12 @@ npx skills add yangbuyiya/fuxi-skill
 输入一个名字后，伏羲做四件事：
 
 **1. 六路并行采集**——著作、播客/访谈、社交媒体、批评者视角、决策记录、人生时间线，6个Agent同时跑，各自存档。
+- **Agent 1 著作**：提取核心论点、自创术语、**输入源分析（此人读什么书、受谁影响）、智识谱系来源**
+- Agent 2-6：对话、表达、他者视角、决策、时间线
 
 **2. 三重验证提炼**——一个观点要被收录为心智模型，必须：跨2+个领域出现过（不是随口一说）、能推断对新问题的立场（有预测力）、不是所有聪明人都会这么想（有排他性）。三个都过才收录。
 
-**3. 构建Skill**——3-7个心智模型 + 5-10条决策启发式 + 表达DNA + 价值观与反模式 + 诚实边界，写入SKILL.md。
+**3. 构建Skill**——3-7个心智模型 + 5-10条决策启发式 + 表达DNA + 价值观与反模式 + 智识谱系 + 诚实边界，写入SKILL.md。
 
 **4. 质量验证**——拿3个此人公开回答过的问题测试，方向一致才通过。再用1个他没讨论过的问题测试，Skill应该表现出适度不确定而非斩钉截铁。
 
@@ -234,21 +238,6 @@ fuxi-skill/
 
 ---
 
-## 关于作者
-
-**花叔 Huashu** — AI Native Coder，独立开发者，代表作：小猫补光灯（AppStore 付费榜 Top1）
-
-| 平台 | 链接 |
-|------|------|
-| 🌐 官网 | [bookai.top](https://bookai.top) · [huasheng.ai](https://www.huasheng.ai) |
-| 𝕏 Twitter | [@AlchainHust](https://x.com/AlchainHust) |
-| 📺 B站 | [AI进化论-花生](https://space.bilibili.com/14097567) |
-| ▶️ YouTube | [@Alchain](https://www.youtube.com/@Alchain) |
-| 📕 小红书 | [花生](https://www.xiaohongshu.com/user/profile/5abc6f17e8ac2b109179dfdf) |
-| 💬 公众号 | 微信搜「花叔」或扫码关注 ↓ |
-
-<img src="wechat-qrcode.jpg" alt="公众号二维码" width="360">
-
 ## 许可证
 
 MIT — 随便用，随便改，随便造。
@@ -263,7 +252,7 @@ MIT — 随便用，随便改，随便造。
 
 <br>
 
-MIT License © [花叔 Huashu](https://github.com/alchaincyf)
+MIT License © [yangbuyiya](https://github.com/yangbuyiya)
 
 </div>
 
@@ -275,14 +264,18 @@ MIT License © [花叔 Huashu](https://github.com/alchaincyf)
 
 **[colleague-skill](https://github.com/titanwings/colleague-skill)** proved that distilling a person into an AI skill is viable. **Fuxi** asks: why stop at colleagues? Distill the best minds in every field — Munger, Feynman, Musk, Naval — people who conveniently left mountains of distillable material behind.
 
-Fuxi is a Claude Code skill that extracts cognitive frameworks — mental models, decision heuristics, expression DNA — from any public figure into a runnable perspective skill.
+Fuxi is a Claude Code skill that extracts cognitive frameworks — mental models, decision heuristics, expression DNA, **intellectual genealogy** — from any public figure into a runnable perspective skill.
 
 Not role-playing. Cognitive architecture extraction.
 
 **Install**: `npx skills add yangbuyiya/fuxi-skill`
 
-**How it works**: Input a name → 6 parallel research agents → 40+ primary sources → triple-verified mental models → quality-validated SKILL.md
+**How it works**: Input a name → 6 parallel research agents → **input source analysis & intellectual genealogy extraction** → 40+ primary sources → triple-verified mental models → quality-validated SKILL.md
 
 **7 examples included**: Steve Jobs, Elon Musk, Naval Ravikant, Charlie Munger, Feynman, Taleb, and Zhang Xuefeng — all with full research data. The Jobs example includes a complete multi-turn conversation demo.
+
+**What's new**: 
+- **Input Source Analysis**: What books/authors influenced this person? Who are their intellectual mentors?
+- **Intellectual Genealogy**: Which school of thought do they belong to? What cross-disciplinary influences shaped their thinking?
 
 See the Chinese README above for live examples and methodology.
