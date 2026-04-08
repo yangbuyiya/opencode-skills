@@ -196,17 +196,12 @@ npx skills add yangbuyiya/fuxi-skill
 
 ```
 fuxi-skill/
-├── SKILL.md                      # 伏羲本体
+├── SKILL.md                       # 伏羲本体
 ├── references/
-│   ├── extraction-framework.md   # 提炼方法论（想深入了解看这个）
-│   └── skill-template.md         # 生成Skill的模板
-└── examples/                     # 7个完整示例 + 调研数据
-    ├── steve-jobs-perspective/    # ⭐ 乔布斯（含实战对话记录）
-    ├── elon-musk-perspective/     # 马斯克
-    ├── naval-perspective/         # Naval Ravikant
-    ├── munger-perspective/        # 查理·芒格
-    ├── feynman-perspective/       # 费曼
-    ├── taleb-perspective/         # 塔勒布
+│   ├── extraction-framework.md    # 提炼方法论（想深入了解看这个）
+│   └── skill-template.md          # 生成Skill的模板
+└── examples/                      # 完整示例
+    ├── yangbuyi-perspective/      # 程序员杨不易（中文人物示例）
     └── zhangxuefeng-perspective/  # 张雪峰（中文人物示例）
 ```
 
@@ -255,6 +250,10 @@ MIT — 随便用，随便改，随便造。
 MIT License © [yangbuyiya](https://github.com/yangbuyiya)
 
 </div>
+
+
+* 本 SKILL 由 [nvwa-skill](https://github.com/alchaincyf/nuwa-skill) 二开而来, 感谢原作者
+* 参考了 colleague-skill 的设计方案
 
 ---
 
