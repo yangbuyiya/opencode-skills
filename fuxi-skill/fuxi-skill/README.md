@@ -201,6 +201,7 @@ fuxi-skill/
 │   ├── extraction-framework.md    # 提炼方法论（想深入了解看这个）
 │   └── skill-template.md          # 生成Skill的模板
 └── examples/                      # 完整示例
+    ├── trump-perspective/         # 特朗普
     ├── yangbuyi-perspective/      # 程序员杨不易（中文人物示例）
     └── zhangxuefeng-perspective/  # 张雪峰（中文人物示例）
 ```
